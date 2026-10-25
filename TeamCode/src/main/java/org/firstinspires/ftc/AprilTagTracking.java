@@ -33,6 +33,8 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.BuiltinCameraDirection;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -102,18 +104,18 @@ public class AprilTagTracking extends LinearOpMode
     //  Drive = Error * Gain    Make these values smaller for smoother control, or larger for a more aggressive response.
     final double SPEED_GAIN  =  0.02  ;   //  Forward Speed Control "Gain". e.g. Ramp up to 50% power at a 25 inch error.   (0.50 / 25.0)
     final double STRAFE_GAIN =  0.015 ;   //  Strafe Speed Control "Gain".  e.g. Ramp up to 37% power at a 25 degree Yaw error.   (0.375 / 25.0)
-    final double TURN_GAIN   =  0.01  ;   //  Turn Control "Gain".  e.g. Ramp up to 25% power at a 25 degree error. (0.25 / 25.0)
+    final double TURN_GAIN   =  0.012 ;   //  Turn Control "Gain". Increased by 20% (0.01 * 1.20)
 
     final double MAX_AUTO_SPEED = 0.5;   //  Clip the approach speed to this max value (adjust for your robot)
     final double MAX_AUTO_STRAFE= 0.5;   //  Clip the strafing speed to this max value (adjust for your robot)
-    final double MAX_AUTO_TURN  = 0.3;   //  Clip the turn speed to this max value (adjust for your robot)
-    final double MAX_SHOOTER_POWER = 0.51; //  Max power for the shooter motor (51%)
+    final double MAX_AUTO_TURN  = 0.36;  //  Clip the turn speed to this max value (increased by 20% from 0.3)
+    final double MAX_SHOOTER_POWER = 0.535; //  Max power for the shooter motor (53%)
 
     private DcMotor frontLeftDrive = null;  //  Used to control the left front drive wheel
-    private DcMotor frontRightDrive = null;  //  Used to control the right front drive wheel
+    private DcMotor frontRightDrive = null;  //  Used to control the right right drive wheel
     private DcMotor backLeftDrive = null;  //  Used to control the left back drive wheel
     private DcMotor backRightDrive = null;  //  Used to control the right back drive wheel
-    private DcMotor shooterMotor = null;//  Used to control 312 RPM shooter motor
+    private DcMotorEx shooterMotor = null; //  Used to control shooter motor
 
     private DcMotor intakeMotor = null;
     private DcMotor transferMotor = null;//  Used to control transfer motor
@@ -132,15 +134,16 @@ public class AprilTagTracking extends LinearOpMode
         double  strafe          = 0;        // Desired strafe power/speed (-1 to +1)
         double  turn            = 0;        // Desired turning power/speed (-1 to +1)
 
-        // Initialize the Apriltag Detection process
-        initAprilTag();
+        // Initialize the Apriltag Detection process (commented out)
+        // initAprilTag();
 
         // Initialize hardware mapping for all drive motors, shooter motor, transfer motor, and intake servo
-       // frontLeftDrive = hardwareMap.get(DcMotor.class, "frontleftmotor");
-       // frontRightDrive = hardwareMap.get(DcMotor.class, "frontrightmotor");
-       // backLeftDrive = hardwareMap.get(DcMotor.class, "backleftmotor");
+        frontLeftDrive = hardwareMap.get(DcMotor.class, "frontleftmotor");
+        frontRightDrive = hardwareMap.get(DcMotor.class, "frontrightmotor");
+        backLeftDrive = hardwareMap.get(DcMotor.class, "backleftmotor");
+        backRightDrive = hardwareMap.get(DcMotor.class,"backrightmotor");
         intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
-        shooterMotor = hardwareMap.get(DcMotor.class, "shooter_motor");
+        shooterMotor = hardwareMap.get(DcMotorEx.class, "shooter_motor");
         transferMotor = hardwareMap.get(DcMotor.class, "transfer_motor");
        // frontrightservo = hardwareMap.get(CRServo.class, "frontrightservo");
 
@@ -153,12 +156,12 @@ public class AprilTagTracking extends LinearOpMode
         intakeMotor.setDirection(DcMotor.Direction.REVERSE);
         intakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        //frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
-        //frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
+        frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+        frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
+        backRightDrive.setDirection(DcMotor.Direction.FORWARD);
 
-
-        if (USE_WEBCAM)
-            setManualExposure(6, 250);  // Use low exposure time to reduce motion blur
+        // if (USE_WEBCAM)
+        //     setManualExposure(6, 250);  // Use low exposure time to reduce motion blur
 
         // Wait for driver to press start
         telemetry.addData("Camera preview on/off", "3 dots, Camera Stream" + DESIRED_DISTANCE);
@@ -172,6 +175,7 @@ public class AprilTagTracking extends LinearOpMode
             targetFound = false;
             desiredTag  = null;
 
+            /*
             // Step through the list of detected tags and look for a matching tag
             List<AprilTagDetection> currentDetections = aprilTag.getDetections();
             for (AprilTagDetection detection : currentDetections) {
@@ -192,6 +196,7 @@ public class AprilTagTracking extends LinearOpMode
                     telemetry.addData("Unknown", "Tag ID %d is not in TagLibrary", detection.id);
                 }
             }
+            */
 
             // Tell the driver what we see, and what to do.
             if (targetFound) {
@@ -232,34 +237,46 @@ public class AprilTagTracking extends LinearOpMode
                 // Drive using Left Stick Y for forward/back drive
                 drive  = -gamepad1.left_stick_y;          // Drive forward/backward based on Left Stick Y
                 strafe = -gamepad1.left_stick_x  / 2.0;  // Reduce strafe rate to 50%.
-                turn   = -gamepad1.right_stick_x / 3.0;  // Reduce turn rate to 33%.
+                turn   = -gamepad1.right_stick_x / 2.0;  // Turn rate increased by 20% (40% max power, /2.5 instead of /3.0).
 
                 telemetry.addData("Manual","Drive %5.2f, Strafe %5.2f, Turn %5.2f ", drive, strafe, turn);
             }
 
             // Mechanism Controls:
-            // Right Bumper = Shooter motor ONLY (0.51)
-            // Right Trigger = Transfer motor ONLY (1.0)
-            // Left Trigger = Intake motor ONLY (1.0)
+            // Right Bumper = Shooter & Transfer (0.51) - Transfer starts when shooter speed > 3000 RPM
+            // Right Trigger = Disabled / Commented out
+            // Left Trigger = Intake motor ONLY (.75)
             if (gamepad1.right_bumper) {
                 shooterMotor.setPower(MAX_SHOOTER_POWER);
-                transferMotor.setPower(0);
+                double shooterRPM = Math.abs(shooterMotor.getVelocity(AngleUnit.DEGREES) / 6.0);
+                if (shooterRPM>28) {
+                    transferMotor.setPower(.51);
+                    intakeMotor.setPower(1.0);
+                } else {
+                    transferMotor.setPower(0);
+                    intakeMotor.setPower(.2);
+                }
                 intakeMotor.setPower(0);
-                telemetry.addData("Shooter Mode (RB)", "%5.2f", MAX_SHOOTER_POWER);
-            } else if (gamepad1.right_trigger > 0) {
-                shooterMotor.setPower(0);
-                transferMotor.setPower(1.0);
-                intakeMotor.setPower(0);
-                telemetry.addData("Transfer Mode (RT)", "1.00");
-            } else if (gamepad1.left_trigger > 0) {
+                telemetry.addData("Shooter RPM", "%.0f", shooterRPM);
+                telemetry.addData("Shooter Mode (RB)", "Shooter: %.2f, Transfer: %s",
+                        MAX_SHOOTER_POWER, (shooterRPM > 3000 ? "0.51" : "Waiting (>3000 RPM)"));
+            }
+            // Right Trigger code commented out:
+            // else if (gamepad1.right_trigger > 0) {
+            //     shooterMotor.setPower(0);
+            //     transferMotor.setPower(1.0);
+            //     intakeMotor.setPower(0);
+            //     telemetry.addData("Transfer Mode (RT)", "1.00");
+            // }
+            else if (gamepad1.left_trigger > 0) {
                 shooterMotor.setPower(0);
                 transferMotor.setPower(0);
-                intakeMotor.setPower(1.0);
-                telemetry.addData("Intake Mode (LT)", "1.00");
+                intakeMotor.setPower(.75);
+                telemetry.addData("Intake Mode (LT)", ".75");
             } else {
                 shooterMotor.setPower(0);
                 transferMotor.setPower(0);
-                intakeMotor.setPower(0);
+                intakeMotor.setPower(.2);
             }
 
             telemetry.update();
@@ -299,10 +316,10 @@ public class AprilTagTracking extends LinearOpMode
         }
 
         // Send powers to the wheels.
-        //frontLeftDrive.setPower(frontLeftPower);
-        //frontRightDrive.setPower(frontRightPower);
-        //backLeftDrive.setPower(backLeftPower);
-        //backRightDrive.setPower(backRightPower);
+         frontLeftDrive.setPower(frontLeftPower);
+        frontRightDrive.setPower(frontRightPower);
+        backLeftDrive.setPower(backLeftPower);
+        backRightDrive.setPower(backRightPower);
     }
 
     /**
