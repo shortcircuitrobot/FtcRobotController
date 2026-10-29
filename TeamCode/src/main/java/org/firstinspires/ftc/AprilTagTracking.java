@@ -249,17 +249,18 @@ public class AprilTagTracking extends LinearOpMode
             if (gamepad1.right_bumper) {
                 shooterMotor.setPower(MAX_SHOOTER_POWER);
                 double shooterRPM = Math.abs(shooterMotor.getVelocity(AngleUnit.DEGREES) / 6.0);
-                if (shooterRPM>28) {
+                if (shooterRPM > 27) {
                     transferMotor.setPower(.51);
                     intakeMotor.setPower(1.0);
                 } else {
                     transferMotor.setPower(0);
-                    intakeMotor.setPower(.2);
+                    intakeMotor.setPower(0);
                 }
-                intakeMotor.setPower(0);
                 telemetry.addData("Shooter RPM", "%.0f", shooterRPM);
-                telemetry.addData("Shooter Mode (RB)", "Shooter: %.2f, Transfer: %s",
-                        MAX_SHOOTER_POWER, (shooterRPM > 3000 ? "0.51" : "Waiting (>3000 RPM)"));
+                telemetry.addData("Shooter Mode (RB)", "Shooter: %.2f, Transfer: %s, Intake: %s",
+                        MAX_SHOOTER_POWER,
+                        (shooterRPM > 27 ? "0.51" : "Waiting"),
+                        (shooterRPM > 27 ? "1.00" : "0.00"));
             }
             // Right Trigger code commented out:
             // else if (gamepad1.right_trigger > 0) {
@@ -271,7 +272,7 @@ public class AprilTagTracking extends LinearOpMode
             else if (gamepad1.left_trigger > 0) {
                 shooterMotor.setPower(0);
                 transferMotor.setPower(0);
-                intakeMotor.setPower(.75);
+                intakeMotor.setPower(.50);
                 telemetry.addData("Intake Mode (LT)", ".75");
             } else {
                 shooterMotor.setPower(0);
