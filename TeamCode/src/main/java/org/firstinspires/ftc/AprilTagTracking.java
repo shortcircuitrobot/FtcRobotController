@@ -208,6 +208,7 @@ public class AprilTagTracking extends LinearOpMode
                         desiredTag.ftcPose.z));
                 telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)",
                         desiredTag.ftcPose.pitch,
+
                         desiredTag.ftcPose.roll,
                         desiredTag.ftcPose.yaw));
                 telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)",
@@ -250,8 +251,8 @@ public class AprilTagTracking extends LinearOpMode
                 shooterMotor.setPower(MAX_SHOOTER_POWER);
                 double shooterRPM = Math.abs(shooterMotor.getVelocity(AngleUnit.DEGREES) / 6.0);
                 if (shooterRPM > 27) {
-                    transferMotor.setPower(.51);
-                    intakeMotor.setPower(1.0);
+                    transferMotor.setPower(.51  );
+                    intakeMotor.setPower(.40);
                 } else {
                     transferMotor.setPower(0);
                     intakeMotor.setPower(0);
@@ -277,7 +278,7 @@ public class AprilTagTracking extends LinearOpMode
             } else {
                 shooterMotor.setPower(0);
                 transferMotor.setPower(0);
-                intakeMotor.setPower(.2);
+                intakeMotor.setPower(0);
             }
 
             telemetry.update();
