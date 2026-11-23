@@ -9,6 +9,7 @@ import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.Scheduler;
 
 import static com.pedropathing.ivy.Scheduler.schedule;
+import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 
@@ -30,12 +31,18 @@ public class AutoRedWait extends LinearOpMode {
     private final Pose point2 = poseFactory.of(57.664, 9.6731, 90);
     private final Pose point3 = poseFactory.of(5.7405, 100.1823, -60.1579);
 
-    // Autonomous routine: Forward to point1, backward to point2
+    // Pause after each movement (milliseconds)
+    private static final double WAIT_MS = 3000;
+
+    // Autonomous routine: Forward to point1, wait, backward to point2, wait
     public Command autoRoutine() {
         return sequential(
                 follow(follower, path1()),
-                follow(follower, path2())
-                // , follow(follower, path3())
+                waitMs(WAIT_MS),
+                follow(follower, path2()),
+                waitMs(WAIT_MS)
+                // , follow(follower, path3()),
+                // waitMs(WAIT_MS)
         );
     }
 
