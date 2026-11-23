@@ -64,8 +64,8 @@ public class Constants {
                 c.quadraticBrakeCoefficients.set(Matrix.diag(0.0020568915851435342 * 1.5, 0.0014691025366729165 * 1.5));
                 c.maxBrakingPower.set(0.6);
 
-                c.maxPathSpeed.set(0.3); // Cap target path speed to 30% of max speed
-                c.maxVelocityConstraint.set(15.0); // Cap velocity to 15 inches/second
+                c.maxPathSpeed.set(0.6); // Cap target path speed to 60% of max speed (was 0.3)
+                c.maxVelocityConstraint.set(30.0); // Cap velocity to 30 inches/second (was 15)
 
                 c.maxAchievableForwardVelocity.set(61.961372145639096);
                 c.maxAchievableStrafeVelocity.set(54.10417246228246);
