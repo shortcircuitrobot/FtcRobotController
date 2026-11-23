@@ -36,9 +36,9 @@ public class Constants {
     public static PinpointConfig localizerConfig = new PinpointConfig(c -> {
         c.name.set("pinpoint");
         c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        c.xPodOffset.set(4.815936651755505);
-        c.yPodOffset.set(-5.053265789362389);
-        c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        c.xPodOffset.set(-11.359649417907235);
+        c.yPodOffset.set(5.8958837554210755);
+        c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.REVERSED);
         c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
         c.globalDistanceUnit.set(DistanceUnit.INCH);
         c.offsetUnits.set(DistanceUnit.INCH);
@@ -119,9 +119,16 @@ public class Constants {
         }
     }
 
+    /**
+     * Uses the standard Pinpoint localizer. With a starting heading of 90°,
+     * Pedro's normal field frame already gives Y = forward and X = right,
+     * so no axis swap is needed. (SwappedPinpointLocalizer swapped X/Y while
+     * still passing the 90° heading to the Pinpoint, which made forward motion
+     * read as sideways and caused the robot to drive diagonally.)
+     */
     public static Follower create(HardwareMap h) {
         return new Follower(
-                new SwappedPinpointLocalizer(h, localizerConfig),
+                new PinpointLocalizer(h, localizerConfig),
                 new Mecanum(h, drivetrainConfig),
                 new Foresight(foresightConfig)
         );
