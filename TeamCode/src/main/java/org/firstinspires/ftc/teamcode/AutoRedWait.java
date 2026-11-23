@@ -35,7 +35,7 @@ public class AutoRedWait extends LinearOpMode {
     private final Pose point3 = poseFactory.of(5.7405, 100.1823, 123);
 
     // Pause after each movement (milliseconds)
-    private static final double WAIT_MS = 3000;
+    private static final double WAIT_MS = 1000;
 
     // Turn-in-place settings
     private static final double TURN_TOLERANCE_DEG = 2.0; // close enough to the target heading
