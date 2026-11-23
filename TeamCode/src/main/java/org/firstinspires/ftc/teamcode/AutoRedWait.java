@@ -27,12 +27,14 @@ public class AutoRedWait extends LinearOpMode {
 
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
-    // Poses (Y = Forward/Backward, X = Left/Right, Heading 90° = Facing Forward)
-    private final Pose start = poseFactory.of(57.481, 8.5268, 90);
-    private final Pose point1 = poseFactory.of(57.4423, 25.226, 90);
-    private final Pose point2Start = poseFactory.of(57.4423, 25.226, 90);
-    private final Pose point2 = poseFactory.of(57.664, 9.6731, 90);
-    private final Pose point3 = poseFactory.of(5.7405, 100.1823, 123);
+    // Poses (+Y = toward the far wall, +X = right)
+    // Heading -90° = robot's FRONT faces the starting wall (back faces the far wall)
+    private final Pose start = poseFactory.of(57.481, 8.5268, -90);
+    private final Pose point1 = poseFactory.of(57.4423, 25.226, -90);
+    private final Pose point2Start = poseFactory.of(57.4423, 25.226, -90);
+    private final Pose point2 = poseFactory.of(57.664, 9.6731, -90);
+    // Heading at point3 = back leading toward point3 (about -60°); path 3 computes it exactly
+    private final Pose point3 = poseFactory.of(5.7405, 100.1823, -60.1579);
 
     // Pause after each movement (milliseconds)
     private static final double WAIT_MS = 1000;
@@ -42,15 +44,16 @@ public class AutoRedWait extends LinearOpMode {
     private static final double TURN_TIMEOUT_MS = 2500;   // give up turning after this long
 
     // Autonomous routine:
-    // forward to point1, wait, back to point2, wait,
-    // turn in place to face point3, drive straight to point3, wait
+    // (robot starts with its front facing the starting wall, heading -90°)
+    // drive backward to point1, wait, drive forward to point2, wait,
+    // turn in place so the BACK faces point3, drive back-first to point3, wait
     public Command autoRoutine() {
         return sequential(
                 follow(follower, path1()),
                 waitMs(WAIT_MS),
                 follow(follower, path2()),
                 waitMs(WAIT_MS),
-                turnTo(point2.withHeading(path3Heading())),
+                turnTo(point2.withHeading(path3BackFirstHeading())),
                 follow(follower, path3()),
                 waitMs(WAIT_MS)
         );
@@ -80,6 +83,12 @@ public class AutoRedWait extends LinearOpMode {
     /** Heading (radians) that points straight from point2 to point3. */
     private double path3Heading() {
         return Math.atan2(point3.y() - point2.y(), point3.x() - point2.x());
+    }
+
+    /** Heading (radians) with the robot's BACK pointing at point3 (about -60°). */
+    private double path3BackFirstHeading() {
+        double h = path3Heading() + Math.PI;
+        return Math.atan2(Math.sin(h), Math.cos(h)); // wrap to [-pi, pi]
     }
 
     @Override
@@ -128,8 +137,8 @@ public class AutoRedWait extends LinearOpMode {
         return Paths.line(point2Start, point2).linear(point2Start.heading(), point2.heading());
     }
 
-    // Drive straight to point3 facing the direction of travel (robot already turned)
+    // Drive straight to point3 back-first (robot already turned so its back faces point3)
     public Path path3() {
-        return Paths.line(point2, point3).tangent();
+        return Paths.line(point2, point3).reverseTangent();
     }
 }
