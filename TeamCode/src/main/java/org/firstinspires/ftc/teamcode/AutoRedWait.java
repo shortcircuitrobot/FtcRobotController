@@ -9,6 +9,7 @@ import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.Scheduler;
 
 import static com.pedropathing.ivy.Scheduler.schedule;
+import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.commands.Commands.waitUntil;
 import static com.pedropathing.ivy.groups.Groups.race;
@@ -18,12 +19,28 @@ import static com.pedropathing.ivy.pedro.PedroCommands.hold;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 @Autonomous(name = "AutoRedWait", group = "Autonomous")
 public class AutoRedWait extends LinearOpMode {
 
     private Follower follower;
+
+    // Shooter mechanism (same names/directions/powers as the TeleOp in AprilTagtrackingFTC1)
+    private DcMotorEx shooterMotor;
+    private DcMotor transferMotor;
+    private DcMotor intakeMotor;
+
+    private static final double SHOOTER_POWER = 0.535;   // shooter flywheel power
+    private static final double TRANSFER_POWER = 0.51;   // feeds game pieces into the shooter
+    private static final double INTAKE_POWER = 0.40;     // pushes game pieces while shooting
+    private static final double SHOOTER_READY_RPM = 27;  // same threshold as the TeleOp
+    private static final double SPINUP_TIMEOUT_MS = 3000; // safety: feed anyway if RPM never reached
+    private static final double FEED_MS = 3000;          // how long transfer + intake run (shooting)
+    private static final double PRE_SHOOT_WAIT_MS = 3000; // pause at point1 before feeding (shooter keeps spinning)
 
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
@@ -45,11 +62,14 @@ public class AutoRedWait extends LinearOpMode {
 
     // Autonomous routine:
     // (robot starts with its front facing the starting wall, heading -90°)
-    // drive backward to point1, wait, drive forward to point2, wait,
+    // start shooter + drive to point1, wait for shooter RPM, shoot, stop shooter, wait,
+    // drive forward to point2, wait,
     // turn in place so the BACK faces point3, drive back-first to point3, wait
     public Command autoRoutine() {
         return sequential(
+                instant(() -> shooterMotor.setPower(SHOOTER_POWER)), // spin up while driving
                 follow(follower, path1()),
+                shoot(),
                 waitMs(WAIT_MS),
                 follow(follower, path2()),
                 waitMs(WAIT_MS),
@@ -57,6 +77,36 @@ public class AutoRedWait extends LinearOpMode {
                 follow(follower, path3()),
                 waitMs(WAIT_MS)
         );
+    }
+
+    /**
+     * Pauses PRE_SHOOT_WAIT_MS so the robot settles and the shooter finishes spinning up,
+     * makes sure the shooter is above SHOOTER_READY_RPM (or SPINUP_TIMEOUT_MS passes),
+     * then runs transfer + intake for FEED_MS to shoot, then stops all three motors.
+     */
+    private Command shoot() {
+        return sequential(
+                waitMs(PRE_SHOOT_WAIT_MS),
+                race(
+                        waitUntil(() -> shooterRPM() > SHOOTER_READY_RPM),
+                        waitMs(SPINUP_TIMEOUT_MS)
+                ),
+                instant(() -> {
+                    transferMotor.setPower(TRANSFER_POWER);
+                    intakeMotor.setPower(INTAKE_POWER);
+                }),
+                waitMs(FEED_MS),
+                instant(() -> {
+                    shooterMotor.setPower(0);
+                    transferMotor.setPower(0);
+                    intakeMotor.setPower(0);
+                })
+        );
+    }
+
+    /** Shooter speed in RPM, calculated the same way as the TeleOp. */
+    private double shooterRPM() {
+        return Math.abs(shooterMotor.getVelocity(AngleUnit.DEGREES) / 6.0);
     }
 
     /**
@@ -95,6 +145,18 @@ public class AutoRedWait extends LinearOpMode {
     public void runOpMode() {
         Scheduler.reset();
         follower = Constants.create(hardwareMap);
+
+        // Shooter mechanism hardware (config names match the TeleOp)
+        shooterMotor = hardwareMap.get(DcMotorEx.class, "shooter_motor");
+        transferMotor = hardwareMap.get(DcMotor.class, "transfer_motor");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
+        shooterMotor.setDirection(DcMotor.Direction.FORWARD);
+        shooterMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        transferMotor.setDirection(DcMotor.Direction.REVERSE);
+        transferMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        intakeMotor.setDirection(DcMotor.Direction.REVERSE);
+        intakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
         // Keep starting pose locked to starting coordinates during INIT
         while (!isStarted() && !isStopRequested()) {
             follower.setPose(start);
@@ -119,6 +181,7 @@ public class AutoRedWait extends LinearOpMode {
             telemetry.addData("x", follower.pose().x());
             telemetry.addData("y", follower.pose().y());
             telemetry.addData("heading (deg)", Math.toDegrees(follower.pose().heading()));
+            telemetry.addData("Shooter RPM", "%.0f", shooterRPM());
 
             if (follower.currentPath() != null) {
                 telemetry.addData("Current path distance remaining", follower.distanceToEndpoint());
